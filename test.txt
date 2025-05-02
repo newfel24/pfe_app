@@ -1,0 +1,1 @@
+curl -X POST http://localhost:5001/send-email  -H "Content-Type: application/json"  -d '{    "to": "chiheb.hind1@gmail.com",    "subject": "Test Email",    "message": "This is a test email sent from Flask app 2."}'
