@@ -176,5 +176,5 @@ cython_debug/
 # .gitignore
 .env
 front/front.pem
-back/backend.pem
+back/back.pem
 db/db.pem
