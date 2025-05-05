@@ -1,0 +1,150 @@
+body {
+    font-family: sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f4f4f4;
+}
+
+header {
+    background-color: #333;
+    color: #fff;
+    padding: 1rem;
+    text-align: center;
+}
+
+/* Login Page Specific */
+.login-container {
+    max-width: 400px;
+    margin: 50px auto;
+    padding: 2rem;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.login-container h1 {
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.form-group input[type="email"],
+.form-group input[type="password"] {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+    /* Important to include padding in width */
+}
+
+button[type="submit"],
+#logout-button,
+.enroll-button {
+    display: inline-block;
+    /* Allows setting padding/margins */
+    background-color: #5cb85c;
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    text-align: center;
+    margin-top: 1rem;
+    width: 100%;
+    /* Make login button full width */
+}
+
+button[type="submit"]:hover,
+#logout-button:hover,
+.enroll-button:hover {
+    background-color: #4cae4c;
+}
+
+.error-message {
+    color: red;
+    margin-top: 1rem;
+    text-align: center;
+    min-height: 1em;
+    /* Prevent layout shift when message appears */
+}
+
+
+/* Home Page Specific */
+.dashboard-container {
+    display: flex;
+    /* Arrange sections side-by-side */
+    flex-wrap: wrap;
+    /* Allow wrapping on smaller screens */
+    padding: 1rem;
+    gap: 1rem;
+    /* Space between the sections */
+}
+
+.course-section {
+    flex: 1;
+    /* Each section tries to take equal space */
+    min-width: 300px;
+    /* Minimum width before wrapping */
+    background-color: #fff;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.course-section h2 {
+    margin-top: 0;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.course-section ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.course-section li {
+    border: 1px solid #eee;
+    border-radius: 4px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    background-color: #f9f9f9;
+}
+
+.course-section li h3 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+}
+
+.enroll-button {
+    width: auto;
+    /* Override full width from generic button style */
+    margin-top: 0.5rem;
+    /* Adjust spacing */
+    float: right;
+    /* Position button to the right */
+}
+
+
+footer {
+    text-align: center;
+    margin-top: 2rem;
+    padding: 1rem;
+    color: #555;
+}
+
+#status-message {
+    font-weight: bold;
+    min-height: 1em;
+    /* Prevent layout shift */
+}

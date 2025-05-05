@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <header>
+        <h1>Student Dashboard</h1>
+        <p>Welcome, <span id="student-name">Student</span>!</p> <button id="logout-button">Logout</button>
+    </header>
+
+    <main class="dashboard-container">
+        <section class="course-section" id="enrolled-courses">
+            <h2>My Enrolled Courses</h2>
+            <ul id="enrolled-courses-list">
+                <li>Loading enrolled courses...</li>
+            </ul>
+        </section>
+
+        <section class="course-section" id="available-courses">
+            <h2>Available Courses</h2>
+            <ul id="available-courses-list">
+                <li>Loading available courses...</li>
+            </ul>
+        </section>
+    </main>
+
+    <footer>
+        <p id="status-message"></p>
+    </footer>
+
+</body>
+
+</html>
