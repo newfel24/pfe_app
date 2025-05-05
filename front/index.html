@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hind's Portfolio</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(to right, #6a11cb, #2575fc);
+            color: white;
+        }
+
+        header {
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        header h1 {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            font-size: 20px;
+            color: #dcdcdc;
+        }
+
+        section {
+            padding: 40px 20px;
+        }
+
+        .about,
+        .projects,
+        .contact {
+            background-color: rgba(255, 255, 255, 0.1);
+            margin: 20px auto;
+            border-radius: 10px;
+            max-width: 800px;
+            padding: 20px;
+        }
+
+        .contact input,
+        .contact textarea {
+            width: 100%;
+            margin-top: 10px;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+        }
+
+        .contact button {
+            background-color: #ffffff;
+            color: #2575fc;
+            padding: 10px 20px;
+            border: none;
+            margin-top: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .contact button:hover {
+            background-color: #2575fc;
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <h1>Welcome! I'm Hind</h1>
+        <p>Student | Cloud & Network Enthusiast | Future Engineer</p>
+    </header>
+
+
+    <h2>About Me</h2>
+    <p>Hello! I'm Hind, passionate about cloud computing, networking, and creating impactful solutions.
+        I love to learn, build, and grow. This site will showcase my journey!</p>
+    </section>
+
+    <section class="projects">
+        <h2>My Projects</h2>
+        <p>Soon you will discover my amazing projects here! 🚀</p>
+    </section>
+
+    <section class="contact">
+        <h2>Contact Me</h2>
+        <form>
+            <input type="text" placeholder="Your Name" required><br>
+            <input type="email" placeholder="Your Email" required><br>
+            <textarea placeholder="Your Message" rows="4" required></textarea><br>
+            <button type="submit">Send Message</button>
+        </form>
+    </section>
+
+    <script>
+        document.querySelector("form").addEventListener("submit", async function (event) {
+            event.preventDefault(); // Empêche le rechargement de la page
+
+            const to = document.querySelector("input[type='email']").value;
+            const subject = document.querySelector("input[type='text']").value;
+            const message = document.querySelector("textarea").value;
+
+            try {
+                const response = await fetch("http://172.31.21.22:5001/send-email", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ to, subject, message })
+                });
+
+                if (response.ok) {
+                    alert("Message sent successfully!");
+                } else {
+                    alert("There was a problem sending your message.");
+                }
+            } catch (error) {
+                alert("Failed to connect to the server.");
+                console.error(error);
+            }
+        });
+    </script>
+
+
+</body>
+
+</html>

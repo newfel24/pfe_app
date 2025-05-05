@@ -2,13 +2,14 @@
 
 import os
 from dotenv import load_dotenv
+from flask_cors import CORS
 import smtplib
 from email.mime.text import MIMEText
 
 from flask import Flask, request, jsonify
 
 app = Flask(__name__)
-
+CORS(app)
 load_dotenv()
 
 # Hardcoded sender credentials (use secure vaults in production)
@@ -64,4 +65,4 @@ def send_email():
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5001)
+    app.run(host="0.0.0.0", debug=True, port=5001)
