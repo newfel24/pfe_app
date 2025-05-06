@@ -177,4 +177,5 @@ cython_debug/
 .env
 front/front.pem
 back/back.pem
+back/.env
 db/db.pem
