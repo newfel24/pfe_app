@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             try {
-                const response = await fetch('/api/login', { // Your Flask login endpoint
+                const response = await fetch('http://172.31.21.22:5001/api/login', { // Your Flask login endpoint
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

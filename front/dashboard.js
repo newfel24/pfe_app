@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function fetchDashboardData() {
         try {
             // Assume cookies handle auth, otherwise add Authorization header if using JWT
-            const response = await fetch('/api/dashboard'); // Your Flask dashboard endpoint
+            const response = await fetch('http://172.31.21.22:5001/api/dashboard'); // Your Flask dashboard endpoint
 
             if (response.ok) {
                 const data = await response.json();
@@ -74,7 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function enrollInCourse(courseId) {
         statusMessageElement.textContent = 'Enrolling...'; // Provide feedback
         try {
-            const response = await fetch('/api/enroll', { // Your Flask enroll endpoint
+            const response = await fetch('http://172.31.21.22:5001/api/enroll', { // Your Flask enroll endpoint
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -127,7 +127,7 @@ document.addEventListener('DOMContentLoaded', () => {
             statusMessageElement.textContent = 'Logging out...';
             try {
                 // Optional: Call backend logout endpoint if needed for session invalidation
-                await fetch('/api/logout', { method: 'POST' });
+                await fetch('http://172.31.21.22:5001/api/logout', { method: 'POST' });
             } catch (error) {
                 console.warn('Logout request failed (may not matter if client-side redirect works):', error);
             } finally {
