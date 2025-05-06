@@ -57,6 +57,13 @@ def unauthorized():
 
 
 # --- API Endpoints ---
+@app.route("/api/health", methods=["GET"])
+def health_check():
+    """
+    Health check endpoint to verify if the service is running.
+    Returns a simple JSON response indicating the service status.
+    """
+    return jsonify({"status": "ok"}), 200
 
 
 @app.route("/api/login", methods=["POST"])
