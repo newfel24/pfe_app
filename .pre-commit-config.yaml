@@ -1,0 +1,11 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.11.8 # Use the latest version available
+    hooks:
+      - id: ruff
+        args: [--fix] # Automatically fix lint issues, including line length
+      - id: ruff-format
+  - repo: https://github.com/psf/black
+    rev: 25.1.0
+    hooks:
+      - id: black

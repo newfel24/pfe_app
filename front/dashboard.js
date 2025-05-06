@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
         courses.forEach(course => {
             const listItem = document.createElement('li');
             listItem.innerHTML = `
-                <h3>${course.name || 'Unnamed Course'}</h3> 
+                <h3>${course.name || 'Unnamed Course'}</h3>
                 <p>${course.description || 'No description available.'}</p>
                 ${isAvailableList ?
                     `<button class="enroll-button" data-course-id="${course.course_id}">Enroll</button>` :
