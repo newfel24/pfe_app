@@ -27,8 +27,7 @@ def send_enrollment_email(recipient_email, student_name, course_name):
 
     You have successfully enrolled in the course: {course_name}.
 
-    You can find the course materials [here: link_to_course_materials]
-    (Replace with actual link logic if available).
+    You can find the course materials [here: https://www.coursera.org/]
 
     Happy learning!
 
