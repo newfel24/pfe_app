@@ -151,7 +151,7 @@ def enroll_course():
 
     if success:
         logging.info(
-            f"User {user_id} successfully enrolled in course {course_id}"
+            "User %s successfully enrolled in course %s", user_id, course_id
         )
 
         # 3. Send confirmation email (optional - proceed even if email fails)
@@ -169,14 +169,20 @@ def enroll_course():
         )
         if not email_sent:
             logging.error(
-                f"Failed to send enrollment email to {current_user.email} for course {course_id}, but enrollment succeeded."
+                "Failed to send enrollment email to %s for course %s, "
+                "but enrollment succeeded.",
+                current_user.email,
+                course_id,
             )
-            # Decide if this should be an error response - usually not critical for the enrollment itself
+            # Decide if this should be an error response - usually not critical
+            # for the enrollment itself
 
         return jsonify(message="Enrollment successful")
     else:
         logging.error(
-            f"Database error during enrollment for user {user_id} in course {course_id}"
+            "Database error during enrollment for user %s in course %s",
+            user_id,
+            course_id,
         )
         return (
             jsonify(message="Enrollment failed due to a server error."),
@@ -207,4 +213,4 @@ if __name__ == "__main__":
     # For production, use a proper WSGI server like Gunicorn:
     # gunicorn -w 4 -b 0.0.0.0:5000 app:app
     # (Listen on all interfaces on port 5000)
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=5001, debug=True)
