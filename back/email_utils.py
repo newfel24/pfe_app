@@ -13,7 +13,6 @@ def send_enrollment_email(recipient_email, student_name, course_name):
     if not all(
         [
             config.SMTP_SERVER,
-            config.SMTP_PORT,
             config.SMTP_USER,
             config.SMTP_PASSWORD,
             config.SENDER_EMAIL,
@@ -43,14 +42,30 @@ def send_enrollment_email(recipient_email, student_name, course_name):
     msg["To"] = recipient_email
 
     try:
-        with smtplib.SMTP(config.SMTP_SERVER, config.SMTP_PORT) as server:
-            server.starttls()
+        # Create a secure SSL context
+        context = ssl.create_default_context()
+
+        # Try connecting using STARTTLS (standard for port 587)
+        if config.SMTP_USE_TLS:
+            server = smtplib.SMTP(config.SMTP_SERVER, config.SMTP_PORT)
+            server.starttls(context=context)  # Secure the connection
             server.login(config.SMTP_USER, config.SMTP_PASSWORD)
             server.send_message(msg)
+            server.quit()
             logging.info(
                 "Enrollment email sent successfully to %s", recipient_email
             )
             return True
+        else:  # For older SSL connections (usually port 465, less common now)
+            with smtplib.SMTP_SSL(
+                config.SMTP_SERVER, config.SMTP_PORT, context=context
+            ) as server:
+                server.login(config.SMTP_USER, config.SMTP_PASSWORD)
+                server.send_message(msg)
+                logging.info(
+                    "Enrollment email sent successfully to %s", recipient_email
+                )
+                return True
 
     except smtplib.SMTPAuthenticationError as e:
         logging.error(

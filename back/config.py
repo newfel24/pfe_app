@@ -36,8 +36,8 @@ class Config:
     SMTP_PORT = int(os.getenv("SMTP_PORT"))
     SMTP_USE_TLS = True  # Common practice
     SMTP_USER = os.getenv("SMTP_USER")
-    SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
     SENDER_EMAIL = os.getenv("SENDER_EMAIL")
+    SMTP_PASSWORD = os.getenv("SENDER_PASSWORD")
 
     # Basic check for essential DB config
     if not all([DB_HOST, DB_USER, DB_PASSWORD, DB_NAME]):
