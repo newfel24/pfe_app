@@ -21,14 +21,13 @@ from werkzeug.security import (
     check_password_hash,  # For password handling
     generate_password_hash,
 )
-
-# from flask_cors import CORS # Uncomment if needed during development
+from flask_cors import CORS
 
 
 # --- App Setup ---
 app = Flask(__name__)
 app.config["SECRET_KEY"] = config.SECRET_KEY
-# CORS(app) # Uncomment if frontend served from different origin
+CORS(app)  # Uncomment if frontend served from different origin
 
 # --- Flask-Login Setup ---
 login_manager = LoginManager()
