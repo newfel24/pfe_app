@@ -210,7 +210,7 @@ def create_hash(password):
     """
     # **NEVER expose this in production** - for dev/setup only
     # Example: Access /create_hash/mypassword123 in browser
-    return generate_password_hash(password)
+    return generate_password_hash(password, method="pbkdf2:sha256")
 
 
 # --- Run the App ---
