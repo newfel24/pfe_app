@@ -8,8 +8,39 @@ document.addEventListener('DOMContentLoaded', () => {
     const statusMessageElement = document.getElementById('status-message');
     const logoutButton = document.getElementById('logout-button');
 
-    // MODIFICATION: Mise à jour de renderCourses pour ajouter le bouton "Mark as Finished"
-    function renderCourses(courses, targetElement, courseStatusType) { // courseStatusType: 'enrolled', 'available', 'finished'
+    function setStatusMessage(message, type) {
+        statusMessageElement.textContent = message;
+        // Assumant que #status-message a la classe .message-area en HTML ou que vous l'ajoutez ici
+        // statusMessageElement.className = 'message-area'; // Si pas déjà en HTML
+        if (type === 'success') {
+            statusMessageElement.classList.remove('error-message'); // S'assurer qu'elle n'y est pas
+            statusMessageElement.classList.add('success-message');
+        } else if (type === 'error') {
+            statusMessageElement.classList.remove('success-message');
+            statusMessageElement.classList.add('error-message');
+        } else { // type 'info' ou neutre
+            statusMessageElement.classList.remove('success-message', 'error-message');
+        }
+    }
+
+    function clearStatusMessageAfterDelay(delay = 3000) {
+        // Vérifier si le message est un message d'action avant de l'effacer
+        const currentText = statusMessageElement.textContent || "";
+        if (currentText.startsWith('Marking') ||
+            currentText.includes('finished!') ||
+            currentText.startsWith('Disenroll') ||
+            currentText.startsWith('Successfully disenrolled!') ||
+            currentText.startsWith('Enrollment') ||
+            currentText.startsWith('Successfully enrolled!')) {
+            setTimeout(() => {
+                statusMessageElement.textContent = '';
+                statusMessageElement.classList.remove('success-message', 'error-message');
+            }, delay);
+        }
+    }
+
+
+    function renderCourses(courses, targetElement, courseStatusType) {
         targetElement.innerHTML = '';
 
         if (!courses || courses.length === 0) {
@@ -27,12 +58,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (courseStatusType === 'available') {
                 buttonsHtml = `<button class="enroll-button" data-course-id="${course.course_id}">Enroll</button>`;
             } else if (courseStatusType === 'enrolled') {
+                // Les classes sont définies dans style.css et seront stylées individuellement
                 buttonsHtml = `
                     <button class="mark-finished-button" data-course-id="${course.course_id}">Mark as Finished</button>
                     <button class="disenroll-button" data-course-id="${course.course_id}">Disenroll</button>
                 `;
             } else if (courseStatusType === 'finished') {
-                // Optionnel: ajouter un bouton "Review" ou "Mark as Unfinished" plus tard
                 buttonsHtml = `<span class="status-badge">Completed</span>`;
             }
 
@@ -48,7 +79,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function fetchDashboardData() {
-        // ... (contenu existant de fetchDashboardData - pas de changement ici)
         try {
             const response = await fetch('/api/dashboard');
             if (response.ok) {
@@ -56,112 +86,104 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (data.student && data.student.name) {
                     studentNameElement.textContent = data.student.name;
                 } else {
-                    studentNameElement.textContent = 'User';
+                    studentNameElement.textContent = 'User'; // Fallback
                 }
-                renderCourses(data.enrolled || [], enrolledListElement, false);
-                renderCourses(data.available || [], availableListElement, true);
+                // Correction: les booléens pour le type de cours étaient mal passés dans la version précédente
+                renderCourses(data.enrolled || [], enrolledListElement, 'enrolled');
+                renderCourses(data.available || [], availableListElement, 'available');
                 renderCourses(data.finished || [], finishedListElement, 'finished');
             } else if (response.status === 401 || response.status === 403) {
                 console.log('Unauthorized access, redirecting to login.');
-                window.location.href = '/login.html'; // Assumant que login.html est index.html
+                setStatusMessage('Session expired or unauthorized. Redirecting to login...', 'error');
+                setTimeout(() => { window.location.href = '/login.html'; }, 2000); // Assumant que login.html est login.html
             }
             else {
-                console.error('Failed to fetch dashboard data:', response.status);
-                statusMessageElement.textContent = `Error loading dashboard: ${response.statusText}`;
+                const errorText = await response.text(); // Obtenir plus de détails si ce n'est pas du JSON
+                console.error('Failed to fetch dashboard data:', response.status, errorText);
+                setStatusMessage(`Error loading dashboard: ${response.statusText || 'Unknown error'}`, 'error');
                 enrolledListElement.innerHTML = '<li>Could not load enrolled courses.</li>';
                 availableListElement.innerHTML = '<li>Could not load available courses.</li>';
+                finishedListElement.innerHTML = '<li>Could not load finished courses.</li>';
             }
         } catch (error) {
             console.error('Error during fetchDashboardData:', error);
-            statusMessageElement.textContent = 'Could not connect to server to load dashboard.';
+            setStatusMessage('Could not connect to server to load dashboard.', 'error');
             enrolledListElement.innerHTML = '<li>Error loading enrolled courses.</li>';
             availableListElement.innerHTML = '<li>Error loading available courses.</li>';
+            finishedListElement.innerHTML = '<li>Error loading finished courses.</li>';
         }
     }
 
     async function enrollInCourse(courseId) {
-        // ... (contenu existant de enrollInCourse - pas de changement ici)
-        statusMessageElement.textContent = 'Enrolling...';
+        setStatusMessage('Enrolling...', 'info');
         try {
             const response = await fetch('/api/enroll', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', },
                 body: JSON.stringify({ courseId: courseId }),
             });
+            const responseData = await response.json().catch(() => null); // Gérer le cas où la réponse n'est pas JSON
+
             if (response.ok) {
-                statusMessageElement.textContent = 'Successfully enrolled!';
+                setStatusMessage(responseData.message || 'Successfully enrolled!', 'success');
                 await fetchDashboardData();
             } else {
-                const errorData = await response.json().catch(() => null);
-                const message = errorData?.message || `Enrollment failed (Status: ${response.status})`;
-                statusMessageElement.textContent = `Enrollment failed: ${message}`;
-                console.error('Enrollment failed:', message);
+                setStatusMessage(responseData?.message || `Enrollment failed (Status: ${response.status})`, 'error');
+                console.error('Enrollment failed:', responseData || response.status);
             }
         } catch (error) {
             console.error('Error during enrollInCourse:', error);
-            statusMessageElement.textContent = 'An error occurred during enrollment.';
+            setStatusMessage('An error occurred during enrollment.', 'error');
         }
-        setTimeout(() => { if (statusMessageElement.textContent.startsWith('Enrollment') || statusMessageElement.textContent.startsWith('Successfully enrolled!')) { statusMessageElement.textContent = '' } }, 3000);
+        clearStatusMessageAfterDelay();
     }
 
-    // AJOUT: Nouvelle fonction pour se désinscrire
     async function disenrollFromCourse(courseId) {
-        statusMessageElement.textContent = 'Disenrolling...';
+        setStatusMessage('Disenrolling...', 'info');
         try {
-            const response = await fetch('/api/disenroll', { // Nouveau point de terminaison backend
-                method: 'POST', // Ou DELETE, mais POST est plus simple pour la structure actuelle
-                headers: {
-                    'Content-Type': 'application/json',
-                    // Ajouter l'en-tête d'autorisation si vous utilisez des jetons JWT
-                },
+            const response = await fetch('/api/disenroll', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', },
                 body: JSON.stringify({ courseId: courseId }),
             });
+            const responseData = await response.json().catch(() => null);
 
             if (response.ok) {
-                statusMessageElement.textContent = 'Successfully disenrolled!';
-                // Rafraîchir les données du tableau de bord pour mettre à jour les listes
+                setStatusMessage(responseData.message || 'Successfully disenrolled!', 'success');
                 await fetchDashboardData();
             } else {
-                const errorData = await response.json().catch(() => null); // Essayer de parser l'erreur JSON
-                const message = errorData?.message || `Disenrollment failed (Status: ${response.status})`;
-                statusMessageElement.textContent = `Disenrollment failed: ${message}`;
-                console.error('Disenrollment failed:', message);
+                setStatusMessage(responseData?.message || `Disenrollment failed (Status: ${response.status})`, 'error');
+                console.error('Disenrollment failed:', responseData || response.status);
             }
         } catch (error) {
             console.error('Error during disenrollFromCourse:', error);
-            statusMessageElement.textContent = 'An error occurred during disenrollment.';
+            setStatusMessage('An error occurred during disenrollment.', 'error');
         }
-        // Optionnel : Effacer le message de statut après quelques secondes
-        setTimeout(() => { if (statusMessageElement.textContent.startsWith('Disenroll') || statusMessageElement.textContent.startsWith('Successfully disenrolled!')) { statusMessageElement.textContent = '' } }, 3000);
+        clearStatusMessageAfterDelay();
     }
 
-    // NOUVELLE FONCTION
     async function markCourseAsFinished(courseId) {
-        statusMessageElement.textContent = 'Marking as finished...';
+        setStatusMessage('Marking as finished...', 'info');
         try {
-            const response = await fetch('/api/course/finish', { // Nouveau point de terminaison backend
+            const response = await fetch('/api/course/finish', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json', },
                 body: JSON.stringify({ courseId: courseId }),
             });
+            const responseData = await response.json().catch(() => null);
 
             if (response.ok) {
-                const responseData = await response.json();
-                statusMessageElement.textContent = responseData.message || 'Course marked as finished!';
+                setStatusMessage(responseData.message || 'Course marked as finished!', 'success');
                 await fetchDashboardData();
             } else {
-                const errorData = await response.json().catch(() => null);
-                const message = errorData?.message || `Failed to mark as finished (Status: ${response.status})`;
-                statusMessageElement.textContent = message;
-                console.error('Mark as finished failed:', message);
+                setStatusMessage(responseData?.message || `Failed to mark as finished (Status: ${response.status})`, 'error');
+                console.error('Mark as finished failed:', responseData || response.status);
             }
         } catch (error) {
             console.error('Error during markCourseAsFinished:', error);
-            statusMessageElement.textContent = 'An error occurred while marking the course as finished.';
+            setStatusMessage('An error occurred while marking the course as finished.', 'error');
         }
-        setTimeout(() => { if (statusMessageElement.textContent.startsWith('Marking') || statusMessageElement.textContent.includes('finished!')) { statusMessageElement.textContent = '' } }, 3000);
+        clearStatusMessageAfterDelay();
     }
 
 
@@ -174,7 +196,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     enrollInCourse(courseId);
                 } else {
                     console.error('Enroll button clicked but course ID not found.');
-                    statusMessageElement.textContent = 'Error: Could not identify course to enroll.';
+                    setStatusMessage('Error: Could not identify course to enroll.', 'error');
                 }
             }
         });
@@ -182,17 +204,17 @@ document.addEventListener('DOMContentLoaded', () => {
         console.error('Available courses list element not found!');
     }
 
-    // MODIFICATION: Mettre à jour les gestionnaires d'événements pour inclure le nouveau bouton
     if (enrolledListElement) {
         enrolledListElement.addEventListener('click', (event) => {
             const target = event.target;
             const courseId = target.dataset.courseId;
 
-            if (!courseId) return; // Pas de courseId, on ne fait rien
+            if (!courseId) return;
 
             if (target.classList.contains('disenroll-button')) {
+                // Optionnel: if (confirm('Are you sure?')) disenrollFromCourse(courseId);
                 disenrollFromCourse(courseId);
-            } else if (target.classList.contains('mark-finished-button')) { // NOUVEAU
+            } else if (target.classList.contains('mark-finished-button')) {
                 markCourseAsFinished(courseId);
             }
         });
@@ -202,14 +224,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (logoutButton) {
         logoutButton.addEventListener('click', async () => {
-            // ... (contenu existant du gestionnaire de déconnexion - pas de changement ici)
-            statusMessageElement.textContent = 'Logging out...';
+            setStatusMessage('Logging out...', 'info');
             try {
                 await fetch('/api/logout', { method: 'POST' });
             } catch (error) {
                 console.warn('Logout request failed:', error);
             } finally {
-                window.location.href = '/login.html'; // Assumant que login.html est index.html
+                // Rediriger vers login.html (page de connexion)
+                window.location.href = '/login.html';
             }
         });
     } else {

@@ -1,311 +1,257 @@
-"""Database module for handling MySQL database operations and queries."""
-
-import logging  # For logging DB errors
-
+# database.py
+import logging
 import mysql.connector
-from config import config
 from mysql.connector import Error
-from werkzeug.security import generate_password_hash
-
+from werkzeug.security import (
+    generate_password_hash,
+)  # generate_password_hash est utilisé dans create_user
+from config import config
 
 logging.basicConfig(level=logging.INFO)
+# logging.getLogger('mysql.connector').setLevel(logging.WARNING) # Optionnel: pour réduire le bruit du connecteur
 
 
-# --- Connection ---
 def get_db_connection():
-    """Establish a connection to the MySQL database."""
     try:
         connection = mysql.connector.connect(
             host=config.DB_HOST,
             user=config.DB_USER,
             password=config.DB_PASSWORD,
             database=config.DB_NAME,
+            # connection_timeout=10 # Optionnel: ajouter un timeout
         )
-        if connection.is_connected():
-            logging.info("Successfully connected to database")
-            return connection
+        # Commentaire : le log "Successfully connected" peut devenir bruyant.
+        # if connection.is_connected():
+        #     logging.info("Successfully connected to database")
+        return connection
     except Error as e:
         logging.error("Error connecting to MySQL Database: %s", e)
         return None
 
 
-# --- User Queries ---
+def _execute_query(
+    query,
+    params=None,
+    fetch_one=False,
+    fetch_all=False,
+    is_ddl_dml=False,
+    dictionary_cursor=True,
+):
+    """Helper function to execute queries and manage connections."""
+    conn = get_db_connection()
+    if not conn:
+        # Si c'est une requête qui modifie des données, l'échec de connexion est critique
+        return (False, "Database connection error") if is_ddl_dml else None
+
+    cursor = None
+    try:
+        cursor = conn.cursor(
+            dictionary=dictionary_cursor
+        )  # Utiliser dictionary=True par défaut
+        cursor.execute(query, params)
+
+        if is_ddl_dml:  # INSERT, UPDATE, DELETE, CREATE, ALTER
+            conn.commit()
+            # Pour INSERT, on pourrait retourner lastrowid, pour UPDATE/DELETE, rowcount
+            return True, (
+                cursor.lastrowid
+                if query.strip().upper().startswith("INSERT")
+                else cursor.rowcount
+            )
+
+        if fetch_one:
+            return cursor.fetchone()
+        elif fetch_all:
+            return cursor.fetchall()
+        # Si ni fetch_one ni fetch_all, et pas DDL/DML, c'est une opération sans résultat attendu (rare)
+        return None
+
+    except Error as e:
+        if conn and is_ddl_dml:
+            conn.rollback()
+        logging.error(
+            f"Database query error: {e}\nQuery: {query}\nParams: {params}"
+        )
+        return (False, f"Database error: {e}") if is_ddl_dml else None
+    finally:
+        if cursor:
+            cursor.close()
+        if conn and conn.is_connected():
+            conn.close()
+
+
 def create_user(name, email, password_text):
-    """Creates a new user in the database with a hashed password."""
+    # ... (code existant, semble correct mais utilise une connexion/curseur direct)
+    # Pourrait être refactorisé pour utiliser _execute_query si on veut une consistance
+    # mais la logique de vérification d'email existant est spécifique ici.
+    # Le hachage est fait ici, ce qui est bien.
     conn = get_db_connection()
     if not conn:
         logging.error("Database connection failed, cannot create user.")
         return False, "Database connection error."
 
+    cursor = None
     try:
-        cursor = conn.cursor(
-            dictionary=True
-        )  # Assurez-vous que dictionary=True est utilisé si vous voulez
-        # vérifier les doublons d'une certaine manière
-
-        # 1. Vérifier si l'email existe déjà
+        cursor = conn.cursor(dictionary=True)
         check_query = "SELECT user_id FROM users WHERE email = %s"
         cursor.execute(check_query, (email,))
         if cursor.fetchone():
             logging.warning(
-                "Attempt to create user with existing email: %s", email
+                f"Attempt to create user with existing email: {email}"
             )
             return False, "Email already exists."
 
-        # 2. Hasher le mot de passe
         password_hash = generate_password_hash(
             password_text, method="pbkdf2:sha256"
         )
-
-        # 3. Insérer le nouvel utilisateur
         insert_query = (
             "INSERT INTO users (name, email, password_hash) VALUES (%s, %s, %s)"
         )
         cursor.execute(insert_query, (name, email, password_hash))
         conn.commit()
-        logging.info("User created successfully: %s", email)
+        logging.info(f"User created successfully: {email}")
         return True, "User created successfully."
     except Error as e:
-        logging.error("Error creating user %s: %s", email, e)
-        conn.rollback()
-        return False, f"Database error: {e}"  # Ou un message plus générique
+        logging.error(f"Error creating user {email}: {e}")
+        if conn:
+            conn.rollback()
+        return False, f"Database error: {e}"
     finally:
-        if conn.is_connected():
+        if cursor:
             cursor.close()
+        if conn and conn.is_connected():
             conn.close()
 
 
 def find_user_by_email(email):
-    """Find a user by email and return user data.
-
-    Returns id, email, name, and password_hash.
-    """
-    conn = get_db_connection()
-    if not conn:
-        query = """
-            SELECT user_id, email, name, password_hash
-            FROM users
-            WHERE email = %s"""
-    try:
-        cursor = conn.cursor(dictionary=True)  # Returns rows as dictionaries
-        query = (
-            "SELECT user_id, email, name, password_hash "
-            "FROM users WHERE email = %s"
-        )
-        cursor.execute(query, (email,))
-        user = cursor.fetchone()
-        return user  # Returns dict or None
-    except Error as e:
-        logging.error("Error finding user by email: %s", e)
-        return None
-    finally:
-        if conn.is_connected():
-            cursor.close()
-            conn.close()
+    # Correction: la query était mal indentée si conn était None (n'affectait pas la logique mais propre)
+    query = (
+        "SELECT user_id, email, name, password_hash FROM users WHERE email = %s"
+    )
+    return _execute_query(query, (email,), fetch_one=True)
 
 
 def find_user_by_id(user_id):
-    """Find a user by ID for Flask-Login user_loader."""
-    conn = get_db_connection()
-    if not conn:
-        return None
-    try:
-        cursor = conn.cursor(dictionary=True)
-        query = "SELECT user_id, email, name FROM users WHERE user_id = %s"
-        cursor.execute(query, (user_id,))
-        user = cursor.fetchone()
-        return user
-    except Error as e:
-        logging.error("Error finding user by ID: %s", e)
-        return None
-    finally:
-        if conn.is_connected():
-            cursor.close()
-            conn.close()
+    query = "SELECT user_id, email, name FROM users WHERE user_id = %s"
+    return _execute_query(query, (user_id,), fetch_one=True)
 
 
-# --- Course/Enrollment Queries ---
 def get_enrolled_courses(user_id):
-    """Gets courses a specific user is actively enrolled in."""
-    conn = get_db_connection()
-    if not conn:
-        return []
-    try:
-        cursor = conn.cursor(dictionary=True)
-        # MODIFICATION: Ajouter la condition sur le statut
-        query = """
-            SELECT c.course_id, c.name, c.description
-            FROM courses c
-            JOIN enrollments e ON c.course_id = e.course_id
-            WHERE e.user_id = %s AND e.status = 'enrolled'
-        """
-        cursor.execute(query, (user_id,))
-        courses = cursor.fetchall()
-        return courses
-    except Error as e:
-        logging.error("Error fetching enrolled courses: %s", e)
-        return []
-    finally:
-        if (
-            conn and conn.is_connected()
-        ):  # Vérifier conn avant d'appeler is_connected
-            if "cursor" in locals() and cursor:
-                cursor.close()
-            conn.close()
+    query = """
+        SELECT c.course_id, c.name, c.description 
+        FROM courses c
+        JOIN enrollments e ON c.course_id = e.course_id
+        WHERE e.user_id = %s AND e.status = 'enrolled'
+    """
+    return _execute_query(query, (user_id,), fetch_all=True)
 
 
 def get_available_courses(user_id):
-    """Get courses a specific user is NOT enrolled in."""
+    # Cette logique est un peu plus complexe et peut rester avec sa propre gestion de curseur
+    # ou être décomposée si on utilise _execute_query.
+    # Gardons-la telle quelle pour l'instant, elle fonctionne.
     conn = get_db_connection()
     if not conn:
         return []
+    cursor = None
     try:
         cursor = conn.cursor(dictionary=True)
-        # Find course IDs the user *is* enrolled in
         enrolled_query = "SELECT course_id FROM enrollments WHERE user_id = %s"
         cursor.execute(enrolled_query, (user_id,))
         enrolled_ids = [row["course_id"] for row in cursor.fetchall()]
 
-        # Fetch all courses excluding the enrolled ones
+        available_query = "SELECT course_id, name, description FROM courses"
+        params = []
         if enrolled_ids:
-            # Create placeholders string like '%s, %s, %s'
             placeholders = ", ".join(["%s"] * len(enrolled_ids))
-            available_query = (
-                f"SELECT course_id, name, description FROM courses "
-                f"WHERE course_id NOT IN ({placeholders})"
-            )
-            cursor.execute(available_query, tuple(enrolled_ids))
-        else:
-            # If user is enrolled in nothing, fetch all courses
-            available_query = "SELECT course_id, name, description FROM courses"
-            cursor.execute(available_query)
+            available_query += f" WHERE course_id NOT IN ({placeholders})"
+            params.extend(enrolled_ids)
 
+        cursor.execute(
+            available_query, tuple(params)
+        )  # S'assurer que params est un tuple
         courses = cursor.fetchall()
-        return courses  # Returns list of dicts
+        return courses
     except Error as e:
-        logging.error("Error fetching available courses: %s", e)
+        logging.error(f"Error fetching available courses: {e}")
         return []
     finally:
-        if conn.is_connected():
+        if cursor:
             cursor.close()
+        if conn and conn.is_connected():
             conn.close()
 
 
 def check_if_enrolled(user_id, course_id):
-    """Check if a user is already enrolled in a specific course."""
-    conn = get_db_connection()
-    if not conn:
-        return False  # Assume not enrolled if DB error
-    try:
-        cursor = conn.cursor()
-        query = (
-            "SELECT 1 FROM enrollments "
-            "WHERE user_id = %s AND course_id = %s LIMIT 1"
-        )
-        cursor.execute(query, (user_id, course_id))
-        # True if a row exists, False otherwise
-        return cursor.fetchone() is not None
-    except Error as e:
-        logging.error("Error checking enrollment status: %s", e)
-        return False  # Safer to assume not enrolled on error
-    finally:
-        if conn.is_connected():
-            cursor.close()
-            conn.close()
+    query = "SELECT 1 FROM enrollments WHERE user_id = %s AND course_id = %s AND status = 'enrolled' LIMIT 1"
+    # Ajout de status = 'enrolled' pour être précis
+    result = _execute_query(
+        query, (user_id, course_id), fetch_one=True, dictionary_cursor=False
+    )  # Pas besoin de dict ici
+    return result is not None
 
 
 def enroll_user_in_course(user_id, course_id):
-    """Add an enrollment record to the database."""
-    conn = get_db_connection()
-    if not conn:
-        return False
-    try:
-        cursor = conn.cursor()
-        query = """
-            INSERT INTO enrollments (user_id, course_id, enrollment_date)
-            VALUES (%s, %s, NOW())
-        """
-        # Note: NOW() gets the current timestamp from the MySQL server
-        cursor.execute(query, (user_id, course_id))
-        conn.commit()  # Commit the transaction
-        return True  # Success
-    except Error as e:
-        logging.error("Error enrolling user in course: %s", e)
-        conn.rollback()  # Rollback on error
-        return False
-    finally:
-        if conn.is_connected():
-            cursor.close()
-            conn.close()
+    # Assure que le statut est 'enrolled' par défaut ou explicitement
+    # La table a DEFAULT 'enrolled' pour status, donc c'est bon.
+    query = "INSERT INTO enrollments (user_id, course_id, enrollment_date, status) VALUES (%s, %s, NOW(), 'enrolled')"
+    # On s'assure de mettre le statut 'enrolled' en cas de réinscription après désinscription
+    # ou si le DEFAULT n'était pas appliqué pour une raison.
+    # Alternative plus robuste : INSERT ... ON DUPLICATE KEY UPDATE status='enrolled', enrollment_date=NOW()
+    # Cela nécessiterait une clé unique sur (user_id, course_id) dans la table `enrollments` ce qui est déjà fait.
+    # L'actuel `check_if_enrolled` dans app.py empêche déjà l'appel à cette fonction si déjà inscrit.
+    # Donc, un simple INSERT est suffisant.
+    success, _ = _execute_query(query, (user_id, course_id), is_ddl_dml=True)
+    return success
 
 
 def disenroll_user_from_course(user_id, course_id):
-    """Removes an enrollment record from the database."""
+    # La logique actuelle avec vérification préalable est bonne.
+    # On pourrait utiliser _execute_query pour le DELETE mais la logique de vérification est spécifique.
     conn = get_db_connection()
     if not conn:
         logging.error("Database connection failed, cannot disenroll user.")
         return False, "Database connection error."
 
-    cursor = None  # Initialiser cursor à None
+    cursor = None
     try:
-        cursor = conn.cursor()
-        # Vérifier d'abord si l'inscription existe pour donner un retour
-        # plus précis
-        check_query = (
-            "SELECT 1 FROM enrollments WHERE user_id = %s AND course_id = %s"
-        )
+        cursor = conn.cursor(
+            dictionary=False
+        )  # Pas besoin de dict pour ces opérations
+        check_query = "SELECT 1 FROM enrollments WHERE user_id = %s AND course_id = %s"  # Vérifie l'existence de l'inscription, peu importe le statut
         cursor.execute(check_query, (user_id, course_id))
         if not cursor.fetchone():
             logging.warning(
-                "User %s not enrolled in course %s, disenrollment requested.",
-                user_id,
-                course_id,
+                f"User {user_id} has no enrollment record for course {course_id}, disenrollment requested."
             )
-            # On pourrait considérer cela comme un succès
-            # car l'état final est "non inscrit"
-            # ou retourner un message spécifique. Pour l'instant, on supprime
-            # si ça existe.
-            return True, "User was not enrolled or already disenrolled."
+            return (
+                True,
+                "No enrollment record found for this course.",
+            )  # L'état final est "non inscrit"
 
         delete_query = (
             "DELETE FROM enrollments WHERE user_id = %s AND course_id = %s"
         )
         cursor.execute(delete_query, (user_id, course_id))
 
-        if (
-            cursor.rowcount > 0
-        ):  # rowcount indique le nombre de lignes affectées
-            conn.commit()  # Valider la transaction
+        if cursor.rowcount > 0:
+            conn.commit()
             logging.info(
-                "User %s disenrolled successfully from course %s",
-                user_id,
-                course_id,
+                f"User {user_id} disenrolled successfully from course {course_id}"
             )
             return True, "Successfully disenrolled."
         else:
-            # Cela ne devrait pas arriver si la vérification ci-dessus
-            # a trouvé une inscription
-            # mais c'est une sécurité en cas de conditions de concurrence
-            # rares sans verrouillage de ligne.
+            # Devrait être attrapé par la vérification ci-dessus, mais sécurité
             logging.warning(
-                "No enrollment found for user %s and course %s "
-                "during delete, though expected.",
-                user_id,
-                course_id,
+                f"No enrollment found to delete for user {user_id} and course {course_id} (should have been caught)."
             )
-            return (
-                True,
-                "No active enrollment found to remove.",
-            )  # Ou False si on veut signaler l'incohérence
+            return True, "No active enrollment found to remove."
     except Error as e:
         logging.error(
-            "Error disenrolling user %s from course %s: %s",
-            user_id,
-            course_id,
-            e,
+            f"Error disenrolling user {user_id} from course {course_id}: {e}"
         )
-        if conn:  # S'assurer que conn existe avant de faire rollback
-            conn.rollback()  # Annuler en cas d'erreur
+        if conn:
+            conn.rollback()
         return False, f"Database error: {e}"
     finally:
         if cursor:
@@ -315,34 +261,20 @@ def disenroll_user_from_course(user_id, course_id):
 
 
 def get_finished_courses(user_id):
-    """Gets courses a specific user has finished."""
-    conn = get_db_connection()
-    if not conn:
-        return []
-    try:
-        cursor = conn.cursor(dictionary=True)
-        query = """
-            SELECT c.course_id, c.name, c.description
-            FROM courses c
-            JOIN enrollments e ON c.course_id = e.course_id
-            WHERE e.user_id = %s AND e.status = 'finished'
-        """
-        cursor.execute(query, (user_id,))
-        courses = cursor.fetchall()
-        return courses
-    except Error as e:
-        logging.error("Error fetching finished courses: %s", e)
-        return []
-    finally:
-        if conn and conn.is_connected():
-            if "cursor" in locals() and cursor:
-                cursor.close()
-            conn.close()
+    query = """
+        SELECT c.course_id, c.name, c.description 
+        FROM courses c
+        JOIN enrollments e ON c.course_id = e.course_id
+        WHERE e.user_id = %s AND e.status = 'finished'
+    """
+    return _execute_query(query, (user_id,), fetch_all=True)
 
 
 def mark_enrollment_as_finished(user_id, course_id):
-    """Marks a specific enrollment as 'finished' for a user."""
-    conn = get_db_connection()
+    # La logique actuelle est bonne.
+    conn = (
+        get_db_connection()
+    )  # Gardons la connexion/curseur direct pour cette logique spécifique
     if not conn:
         logging.error(
             "Database connection failed, cannot mark course as finished."
@@ -351,49 +283,36 @@ def mark_enrollment_as_finished(user_id, course_id):
 
     cursor = None
     try:
-        cursor = conn.cursor()
-        # S'assurer que le cours est actuellement 'enrolled' avant de le marque
-        # comme 'finished'
+        cursor = conn.cursor(dictionary=False)  # Pas besoin de dict
         update_query = """
-            UPDATE enrollments
-            SET status = 'finished'
+            UPDATE enrollments 
+            SET status = 'finished' 
             WHERE user_id = %s AND course_id = %s AND status = 'enrolled'
         """
         cursor.execute(update_query, (user_id, course_id))
 
-        if (
-            cursor.rowcount > 0
-        ):  # rowcount > 0 signifie que la mise à jour a eu lieu
+        if cursor.rowcount > 0:
             conn.commit()
             logging.info(
-                "Course %s marked as finished for user %s", course_id, user_id
+                f"Course {course_id} marked as finished for user {user_id}."
             )
             return True, "Course marked as finished."
         else:
-            # Soit le cours n'était pas 'enrolled' | l'inscription n'existe pas
-            logging.warning(
-                "No 'enrolled' course %s found to mark as finished user %s",
-                course_id,
-                user_id,
+            cursor.execute(
+                "SELECT status FROM enrollments WHERE user_id = %s AND course_id = %s",
+                (user_id, course_id),
             )
-            # On vérifie si le cours est déjà 'finished' pour ne pas retourner
-            # une erreur inutile
-            check_query = (
-                "SELECT status FROM enrollments "
-                "WHERE user_id = %s AND course_id = %s"
-            )
-            cursor.execute(check_query, (user_id, course_id))
             result = cursor.fetchone()
             if result and result[0] == "finished":
                 return True, "Course was already marked as finished."
-            return False, "Course not found or not currently enrolled."
+            return (
+                False,
+                "Course not found or not currently 'enrolled' to be marked as finished.",
+            )
 
     except Error as e:
         logging.error(
-            "Error marking course %s as finished for user %s: %s",
-            course_id,
-            user_id,
-            e,
+            f"Error marking course {course_id} as finished for user {user_id}: {e}"
         )
         if conn:
             conn.rollback()
@@ -406,23 +325,7 @@ def mark_enrollment_as_finished(user_id, course_id):
 
 
 def get_course_details(course_id):
-    """Fetch details for a single course by ID."""
-    conn = get_db_connection()
-    if not conn:
-        return None
-    try:
-        cursor = conn.cursor(dictionary=True)
-        query = (
-            "SELECT course_id, name, description "
-            "FROM courses WHERE course_id = %s"
-        )
-        cursor.execute(query, (course_id,))
-        course = cursor.fetchone()
-        return course
-    except Error as e:
-        logging.error("Error fetching course details: %s", e)
-        return None
-    finally:
-        if conn.is_connected():
-            cursor.close()
-            conn.close()
+    query = (
+        "SELECT course_id, name, description FROM courses WHERE course_id = %s"
+    )
+    return _execute_query(query, (course_id,), fetch_one=True)

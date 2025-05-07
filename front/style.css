@@ -14,6 +14,7 @@ header {
 
 /* Login Page Specific */
 .login-container {
+    /* Utilisé aussi par signup-container via les commentaires */
     max-width: 400px;
     margin: 50px auto;
     padding: 2rem;
@@ -23,6 +24,7 @@ header {
 }
 
 .login-container h1 {
+    /* S'applique à signup-container h1 aussi si la classe est la même */
     text-align: center;
     margin-bottom: 1.5rem;
 }
@@ -37,7 +39,9 @@ header {
 }
 
 .form-group input[type="email"],
-.form-group input[type="password"] {
+.form-group input[type="password"],
+.form-group input[type="text"] {
+    /* Ajout de input[type="text"] pour le champ nom dans signup */
     width: 100%;
     padding: 0.75rem;
     border: 1px solid #ccc;
@@ -47,11 +51,12 @@ header {
 }
 
 button[type="submit"],
-#logout-button,
-.enroll-button {
+/* S'applique au bouton Login et Signup */
+#logout-button {
+    /* #logout-button est stylé ici aussi */
     display: inline-block;
-    /* Allows setting padding/margins */
     background-color: #5cb85c;
+    /* Vert par défaut */
     color: white;
     padding: 10px 15px;
     border: none;
@@ -60,44 +65,68 @@ button[type="submit"],
     text-align: center;
     margin-top: 1rem;
     width: 100%;
-    /* Make login button full width */
+    /* Pleine largeur pour les boutons de formulaire principaux */
 }
+
+/* Styles spécifiques pour les boutons de cours pour éviter la pleine largeur */
+.enroll-button,
+.disenroll-button,
+.mark-finished-button {
+    display: inline-block;
+    /* Garder inline-block pour padding/margin */
+    padding: 8px 12px;
+    /* Padding peut être ajusté */
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    text-align: center;
+    color: white;
+    /* margin-top: 0.5rem; /* Supprimé car géré par .course-actions */
+    /* float: right;      /* Supprimé car géré par .course-actions (flex-end) */
+    width: auto;
+    /* Important pour qu'ils ne prennent pas toute la largeur */
+}
+
 
 button[type="submit"]:hover,
 #logout-button:hover,
 .enroll-button:hover {
+    /* Un hover générique pour les boutons verts */
     background-color: #4cae4c;
 }
 
 .error-message {
     color: red;
-    margin-top: 1rem;
-    text-align: center;
+    /* margin-top: 1rem; /* Géré par .message-area */
+    /* text-align: center; /* Géré par .message-area */
     min-height: 1em;
-    /* Prevent layout shift when message appears */
+    /* background-color: #ffe0e0; /* Déplacé vers .message-area.error-message */
+    /* border: 1px solid red;      /* Déplacé vers .message-area.error-message */
 }
 
 
 /* Home Page Specific */
 .dashboard-container {
     display: flex;
-    /* Arrange sections side-by-side */
     flex-wrap: wrap;
-    /* Allow wrapping on smaller screens */
     padding: 1rem;
     gap: 1rem;
-    /* Space between the sections */
 }
 
 .course-section {
     flex: 1;
-    /* Each section tries to take equal space */
     min-width: 300px;
-    /* Minimum width before wrapping */
+    /* Assure un bon affichage avant de wrapper */
+    max-width: calc(33.333% - 1rem);
+    /* Pour 3 colonnes max, ajuster si 2 */
     background-color: #fff;
     padding: 1.5rem;
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    display: flex;
+    /* Pour mieux contrôler la hauteur du contenu interne */
+    flex-direction: column;
+    /* Pour que le ul prenne la place restante */
 }
 
 .course-section h2 {
@@ -111,6 +140,8 @@ button[type="submit"]:hover,
     list-style: none;
     padding: 0;
     margin: 0;
+    flex-grow: 1;
+    /* Pour que le ul remplisse l'espace vertical */
 }
 
 .course-section li {
@@ -119,6 +150,14 @@ button[type="submit"]:hover,
     padding: 1rem;
     margin-bottom: 1rem;
     background-color: #f9f9f9;
+    display: flex;
+    /* Pour un meilleur contrôle du contenu interne de li */
+    flex-direction: column;
+    /* Aligner le contenu verticalement */
+    justify-content: space-between;
+    /* Pousser les actions en bas */
+    min-height: 100px;
+    /* Hauteur minimale pour les cartes de cours */
 }
 
 .course-section li h3 {
@@ -126,13 +165,22 @@ button[type="submit"]:hover,
     margin-bottom: 0.5rem;
 }
 
+.course-section li p {
+    flex-grow: 1;
+    /* Pour que le paragraphe prenne l'espace disponible */
+    margin-bottom: 0.5rem;
+    /* Espace avant les boutons */
+}
+
+
+/* Styles pour les boutons de cours spécifiques */
 .enroll-button {
-    width: auto;
-    /* Override full width from generic button style */
-    margin-top: 0.5rem;
-    /* Adjust spacing */
-    float: right;
-    /* Position button to the right */
+    background-color: #5cb85c;
+    /* Vert */
+}
+
+.enroll-button:hover {
+    background-color: #4cae4c;
 }
 
 
@@ -144,14 +192,14 @@ footer {
 }
 
 #status-message {
+    /* Ce style est bon, mais il sera surchargé par .message-area dans signup */
     font-weight: bold;
     min-height: 1em;
-    /* Prevent layout shift */
+    /* Si #status-message est aussi utilisé comme message-area, il faut choisir un style commun */
 }
 
-/* Dans style.css */
+/* Styles pour la page Signup (combinés car beaucoup sont similaires à Login) */
 .signup-container {
-    /* Ou réutilisez .login-container */
     max-width: 450px;
     /* Un peu plus large pour le champ nom */
     margin: 50px auto;
@@ -166,31 +214,34 @@ footer {
     margin-bottom: 1.5rem;
 }
 
+/* Zone de message pour signup et potentiellement login/dashboard status */
 .message-area {
     margin-top: 1rem;
     text-align: center;
     min-height: 1em;
-    /* Prevent layout shift */
-    padding: 0.5em;
+    padding: 0.75em;
+    /* Un peu plus de padding pour les messages avec fond */
     border-radius: 4px;
+    font-weight: bold;
 }
 
-.error-message {
-    /* S'assure que error-message est bien défini */
-    color: red;
-    background-color: #ffe0e0;
-    /* Optionnel : fond léger pour l'erreur */
-    border: 1px solid red;
-    /* Optionnel : bordure pour l'erreur */
+/* Classes spécifiques pour les types de message dans .message-area */
+.message-area.error-message {
+    /* Combinaison pour plus de spécificité */
+    color: #a94442;
+    /* Rouge plus foncé */
+    background-color: #f2dede;
+    border: 1px solid #ebccd1;
 }
 
-.success-message {
-    color: green;
-    background-color: #e0ffe0;
-    /* Optionnel : fond léger pour le succès */
-    border: 1px solid green;
-    /* Optionnel : bordure pour le succès */
+.message-area.success-message {
+    /* Combinaison */
+    color: #3c763d;
+    /* Vert plus foncé */
+    background-color: #dff0d8;
+    border: 1px solid #d6e9c6;
 }
+
 
 .signup-link,
 .login-link {
@@ -200,40 +251,16 @@ footer {
 
 .disenroll-button {
     background-color: #d9534f;
-    /* Rouge pour la désinscription */
-    color: white;
-    padding: 8px 12px;
-    /* Un peu plus petit si vous voulez */
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    text-align: center;
-    margin-top: 0.5rem;
-    float: right;
-    /* Positionner à droite comme le bouton enroll */
+    /* Rouge */
 }
 
 .disenroll-button:hover {
     background-color: #c9302c;
 }
 
-/* Dans style.css */
-
-/* ... (vos styles existants) ... */
-
 .mark-finished-button {
-    display: inline-block;
     background-color: #5bc0de;
-    /* Bleu clair pour info/complétion */
-    color: white;
-    padding: 8px 12px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    text-align: center;
-    margin-right: 5px;
-    /* Espace entre les boutons d'action */
-    /* float: right; si vous voulez qu'il soit aligné avec les autres */
+    /* Bleu clair */
 }
 
 .mark-finished-button:hover {
@@ -241,17 +268,14 @@ footer {
 }
 
 .course-actions {
-    /* Conteneur pour les boutons d'action sur une ligne */
     margin-top: 10px;
     display: flex;
-    /* Pour aligner les boutons sur la même ligne si besoin */
     justify-content: flex-end;
-    /* Aligner les boutons à droite */
 }
 
 .course-actions button {
-    margin-left: 5px;
-    /* Espace entre les boutons */
+    margin-left: 8px;
+    /* Espace cohérent entre les boutons d'action */
 }
 
 .course-actions button:first-child {
@@ -262,9 +286,13 @@ footer {
     background-color: #4CAF50;
     /* Vert */
     color: white;
-    padding: 5px 10px;
-    border-radius: 12px;
-    /* Pour un look de "pilule" */
-    font-size: 0.8em;
-    float: right;
+    padding: 6px 12px;
+    border-radius: 16px;
+    /* Plus arrondi pour un badge */
+    font-size: 0.85em;
+    /* float: right; /* Inutile si dans .course-actions et flex-end */
+    /* display: inline-block; /* Par défaut pour span si pas de float */
 }
+
+/* Correction d'une accolade fermante en trop à la fin du fichier style.css original */
+/* La dernière accolade était en trop */
