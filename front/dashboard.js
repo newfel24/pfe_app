@@ -4,32 +4,44 @@ document.addEventListener('DOMContentLoaded', () => {
     const studentNameElement = document.getElementById('student-name');
     const enrolledListElement = document.getElementById('enrolled-courses-list');
     const availableListElement = document.getElementById('available-courses-list');
+    const finishedListElement = document.getElementById('finished-courses-list');
     const statusMessageElement = document.getElementById('status-message');
     const logoutButton = document.getElementById('logout-button');
 
-    // MODIFICATION ICI: Mise à jour de renderCourses
-    function renderCourses(courses, targetElement, isAvailableList) {
-        targetElement.innerHTML = ''; // Clear previous content
+    // MODIFICATION: Mise à jour de renderCourses pour ajouter le bouton "Mark as Finished"
+    function renderCourses(courses, targetElement, courseStatusType) { // courseStatusType: 'enrolled', 'available', 'finished'
+        targetElement.innerHTML = '';
 
         if (!courses || courses.length === 0) {
-            targetElement.innerHTML = `<li>No ${isAvailableList ? 'available' : 'enrolled'} courses found.</li>`;
+            let message = 'No courses found.';
+            if (courseStatusType === 'enrolled') message = 'No courses currently enrolled.';
+            else if (courseStatusType === 'available') message = 'No courses available for enrollment.';
+            else if (courseStatusType === 'finished') message = 'No courses finished yet.';
+            targetElement.innerHTML = `<li>${message}</li>`;
             return;
         }
 
         courses.forEach(course => {
             const listItem = document.createElement('li');
-            let buttonHtml = '';
-            if (isAvailableList) {
-                buttonHtml = `<button class="enroll-button" data-course-id="${course.course_id}">Enroll</button>`;
-            } else {
-                // AJOUT: Bouton Disenroll pour les cours inscrits
-                buttonHtml = `<button class="disenroll-button" data-course-id="${course.course_id}">Disenroll</button>`;
+            let buttonsHtml = '';
+            if (courseStatusType === 'available') {
+                buttonsHtml = `<button class="enroll-button" data-course-id="${course.course_id}">Enroll</button>`;
+            } else if (courseStatusType === 'enrolled') {
+                buttonsHtml = `
+                    <button class="mark-finished-button" data-course-id="${course.course_id}">Mark as Finished</button>
+                    <button class="disenroll-button" data-course-id="${course.course_id}">Disenroll</button>
+                `;
+            } else if (courseStatusType === 'finished') {
+                // Optionnel: ajouter un bouton "Review" ou "Mark as Unfinished" plus tard
+                buttonsHtml = `<span class="status-badge">Completed</span>`;
             }
 
             listItem.innerHTML = `
                 <h3>${course.name || 'Unnamed Course'}</h3> 
                 <p>${course.description || 'No description available.'}</p>
-                ${buttonHtml}
+                <div class="course-actions">
+                    ${buttonsHtml}
+                </div>
             `;
             targetElement.appendChild(listItem);
         });
@@ -48,6 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 renderCourses(data.enrolled || [], enrolledListElement, false);
                 renderCourses(data.available || [], availableListElement, true);
+                renderCourses(data.finished || [], finishedListElement, 'finished');
             } else if (response.status === 401 || response.status === 403) {
                 console.log('Unauthorized access, redirecting to login.');
                 window.location.href = '/login.html'; // Assumant que login.html est index.html
@@ -122,6 +135,35 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => { if (statusMessageElement.textContent.startsWith('Disenroll') || statusMessageElement.textContent.startsWith('Successfully disenrolled!')) { statusMessageElement.textContent = '' } }, 3000);
     }
 
+    // NOUVELLE FONCTION
+    async function markCourseAsFinished(courseId) {
+        statusMessageElement.textContent = 'Marking as finished...';
+        try {
+            const response = await fetch('/api/course/finish', { // Nouveau point de terminaison backend
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ courseId: courseId }),
+            });
+
+            if (response.ok) {
+                const responseData = await response.json();
+                statusMessageElement.textContent = responseData.message || 'Course marked as finished!';
+                await fetchDashboardData();
+            } else {
+                const errorData = await response.json().catch(() => null);
+                const message = errorData?.message || `Failed to mark as finished (Status: ${response.status})`;
+                statusMessageElement.textContent = message;
+                console.error('Mark as finished failed:', message);
+            }
+        } catch (error) {
+            console.error('Error during markCourseAsFinished:', error);
+            statusMessageElement.textContent = 'An error occurred while marking the course as finished.';
+        }
+        setTimeout(() => { if (statusMessageElement.textContent.startsWith('Marking') || statusMessageElement.textContent.includes('finished!')) { statusMessageElement.textContent = '' } }, 3000);
+    }
+
 
     // --- Event Listeners ---
     if (availableListElement) {
@@ -140,21 +182,18 @@ document.addEventListener('DOMContentLoaded', () => {
         console.error('Available courses list element not found!');
     }
 
-    // AJOUT: Gestionnaire d'événements pour les boutons "Disenroll"
+    // MODIFICATION: Mettre à jour les gestionnaires d'événements pour inclure le nouveau bouton
     if (enrolledListElement) {
         enrolledListElement.addEventListener('click', (event) => {
-            if (event.target.classList.contains('disenroll-button')) {
-                const courseId = event.target.dataset.courseId;
-                if (courseId) {
-                    // Optionnel : Ajouter une confirmation avant de se désinscrire
-                    // if (confirm('Are you sure you want to disenroll from this course?')) {
-                    //     disenrollFromCourse(courseId);
-                    // }
-                    disenrollFromCourse(courseId);
-                } else {
-                    console.error('Disenroll button clicked but course ID not found.');
-                    statusMessageElement.textContent = 'Error: Could not identify course to disenroll.';
-                }
+            const target = event.target;
+            const courseId = target.dataset.courseId;
+
+            if (!courseId) return; // Pas de courseId, on ne fait rien
+
+            if (target.classList.contains('disenroll-button')) {
+                disenrollFromCourse(courseId);
+            } else if (target.classList.contains('mark-finished-button')) { // NOUVEAU
+                markCourseAsFinished(courseId);
             }
         });
     } else {

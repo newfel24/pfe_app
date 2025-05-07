@@ -126,27 +126,31 @@ def find_user_by_id(user_id):
 
 # --- Course/Enrollment Queries ---
 def get_enrolled_courses(user_id):
-    """Get courses a specific user is enrolled in."""
+    """Gets courses a specific user is actively enrolled in."""
     conn = get_db_connection()
     if not conn:
         return []
     try:
         cursor = conn.cursor(dictionary=True)
+        # MODIFICATION: Ajouter la condition sur le statut
         query = """
             SELECT c.course_id, c.name, c.description
             FROM courses c
             JOIN enrollments e ON c.course_id = e.course_id
-            WHERE e.user_id = %s
+            WHERE e.user_id = %s AND e.status = 'enrolled'
         """
         cursor.execute(query, (user_id,))
         courses = cursor.fetchall()
-        return courses  # Returns list of dicts
+        return courses
     except Error as e:
         logging.error("Error fetching enrolled courses: %s", e)
         return []
     finally:
-        if conn.is_connected():
-            cursor.close()
+        if (
+            conn and conn.is_connected()
+        ):  # Vérifier conn avant d'appeler is_connected
+            if "cursor" in locals() and cursor:
+                cursor.close()
             conn.close()
 
 
@@ -245,7 +249,8 @@ def disenroll_user_from_course(user_id, course_id):
     cursor = None  # Initialiser cursor à None
     try:
         cursor = conn.cursor()
-        # Vérifier d'abord si l'inscription existe pour donner un retour plus précis
+        # Vérifier d'abord si l'inscription existe pour donner un retour
+        # plus précis
         check_query = (
             "SELECT 1 FROM enrollments WHERE user_id = %s AND course_id = %s"
         )
@@ -256,8 +261,10 @@ def disenroll_user_from_course(user_id, course_id):
                 user_id,
                 course_id,
             )
-            # On pourrait considérer cela comme un succès car l'état final est "non inscrit"
-            # ou retourner un message spécifique. Pour l'instant, on supprime si ça existe.
+            # On pourrait considérer cela comme un succès
+            # car l'état final est "non inscrit"
+            # ou retourner un message spécifique. Pour l'instant, on supprime
+            # si ça existe.
             return True, "User was not enrolled or already disenrolled."
 
         delete_query = (
@@ -276,8 +283,10 @@ def disenroll_user_from_course(user_id, course_id):
             )
             return True, "Successfully disenrolled."
         else:
-            # Cela ne devrait pas arriver si la vérification ci-dessus a trouvé une inscription
-            # mais c'est une sécurité en cas de conditions de concurrence rares sans verrouillage de ligne.
+            # Cela ne devrait pas arriver si la vérification ci-dessus
+            # a trouvé une inscription
+            # mais c'est une sécurité en cas de conditions de concurrence
+            # rares sans verrouillage de ligne.
             logging.warning(
                 "No enrollment found for user %s and course %s "
                 "during delete, though expected.",
@@ -297,6 +306,97 @@ def disenroll_user_from_course(user_id, course_id):
         )
         if conn:  # S'assurer que conn existe avant de faire rollback
             conn.rollback()  # Annuler en cas d'erreur
+        return False, f"Database error: {e}"
+    finally:
+        if cursor:
+            cursor.close()
+        if conn and conn.is_connected():
+            conn.close()
+
+
+def get_finished_courses(user_id):
+    """Gets courses a specific user has finished."""
+    conn = get_db_connection()
+    if not conn:
+        return []
+    try:
+        cursor = conn.cursor(dictionary=True)
+        query = """
+            SELECT c.course_id, c.name, c.description
+            FROM courses c
+            JOIN enrollments e ON c.course_id = e.course_id
+            WHERE e.user_id = %s AND e.status = 'finished'
+        """
+        cursor.execute(query, (user_id,))
+        courses = cursor.fetchall()
+        return courses
+    except Error as e:
+        logging.error("Error fetching finished courses: %s", e)
+        return []
+    finally:
+        if conn and conn.is_connected():
+            if "cursor" in locals() and cursor:
+                cursor.close()
+            conn.close()
+
+
+def mark_enrollment_as_finished(user_id, course_id):
+    """Marks a specific enrollment as 'finished' for a user."""
+    conn = get_db_connection()
+    if not conn:
+        logging.error(
+            "Database connection failed, cannot mark course as finished."
+        )
+        return False, "Database connection error."
+
+    cursor = None
+    try:
+        cursor = conn.cursor()
+        # S'assurer que le cours est actuellement 'enrolled' avant de le marque
+        # comme 'finished'
+        update_query = """
+            UPDATE enrollments
+            SET status = 'finished'
+            WHERE user_id = %s AND course_id = %s AND status = 'enrolled'
+        """
+        cursor.execute(update_query, (user_id, course_id))
+
+        if (
+            cursor.rowcount > 0
+        ):  # rowcount > 0 signifie que la mise à jour a eu lieu
+            conn.commit()
+            logging.info(
+                "Course %s marked as finished for user %s", course_id, user_id
+            )
+            return True, "Course marked as finished."
+        else:
+            # Soit le cours n'était pas 'enrolled' | l'inscription n'existe pas
+            logging.warning(
+                "No 'enrolled' course %s found to mark as finished user %s",
+                course_id,
+                user_id,
+            )
+            # On vérifie si le cours est déjà 'finished' pour ne pas retourner
+            # une erreur inutile
+            check_query = (
+                "SELECT status FROM enrollments "
+                "WHERE user_id = %s AND course_id = %s"
+            )
+            cursor.execute(check_query, (user_id, course_id))
+            result = cursor.fetchone()
+            if result and result[0] == "finished":
+                return True, "Course was already marked as finished."
+            return False, "Course not found or not currently enrolled."
+
+    except Error as e:
+        logging.error(
+            "Error marking course %s as finished for user %s: %s",
+            course_id,
+            user_id,
+            e,
+        )
+        if conn:
+            conn.rollback()
         return False, f"Database error: {e}"
     finally:
         if cursor:

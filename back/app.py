@@ -154,6 +154,7 @@ def get_dashboard():
 
     enrolled = database.get_enrolled_courses(user_id)
     available = database.get_available_courses(user_id)
+    finished = database.get_finished_courses(user_id)  # NOUVEAU
 
     # Prepare student data (avoid sending sensitive info)
     student_info = {
@@ -163,7 +164,12 @@ def get_dashboard():
     }
 
     return jsonify(
-        {"student": student_info, "enrolled": enrolled, "available": available}
+        {
+            "student": student_info,
+            "enrolled": enrolled,
+            "available": available,
+            "finished": finished,
+        }
     )
 
 
@@ -258,11 +264,41 @@ def disenroll_course():
         return jsonify(message=message), 200
     else:
         # Le message d'erreur vient aussi de database.py
-        # S'il s'agit d'une erreur de base de données, un code 500 est approprié.
-        # Si c'est une autre logique (par exemple, "non trouvé" qui serait un échec), on pourrait ajuster.
+        # S'il s'agit d'une erreur de base de données,
+        # un code 500 est approprié.
+        # Si c'est une autre logique (par exemple, "non trouvé"
+        # qui serait un échec), on pourrait ajuster.
         return jsonify(
             message=message
         ), 500  # Ou un autre code d'erreur si pertinent
+
+
+@app.route("/api/course/finish", methods=["POST"])
+@login_required
+def finish_course():
+    """Marks a course as finished for the current user."""
+    data = request.get_json()
+    if not data or "courseId" not in data:
+        return jsonify(message="Missing courseId."), 400
+
+    try:
+        course_id = int(data["courseId"])
+    except ValueError:
+        return jsonify(message="Invalid courseId format."), 400
+
+    user_id = current_user.id
+
+    success, message = database.mark_enrollment_as_finished(user_id, course_id)
+
+    if success:
+        return jsonify(message=message), 200
+    else:
+        # Si le message est "Course not found or not currently enrolled."
+        if "Course not found" in message:
+            return jsonify(message=message), 404  # Not Found or Bad Request
+        return jsonify(
+            message=message
+        ), 500  # Erreur interne du serveur pour les autres cas
 
 
 # --- Helper for password hashing (run manually once to add users) ---

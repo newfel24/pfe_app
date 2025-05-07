@@ -216,3 +216,63 @@ footer {
 .disenroll-button:hover {
     background-color: #c9302c;
 }
+
+/* Dans style.css */
+
+/* ... (vos styles existants) ... */
+
+.mark-finished-button {
+    display: inline-block;
+    background-color: #5bc0de;
+    /* Bleu clair pour info/complétion */
+    color: white;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    text-align: center;
+    margin-right: 5px;
+    /* Espace entre les boutons d'action */
+    /* float: right; si vous voulez qu'il soit aligné avec les autres */
+}
+
+.mark-finished-button:hover {
+    background-color: #31b0d5;
+}
+
+.course-actions {
+    /* Conteneur pour les boutons d'action sur une ligne */
+    margin-top: 10px;
+    display: flex;
+    /* Pour aligner les boutons sur la même ligne si besoin */
+    justify-content: flex-end;
+    /* Aligner les boutons à droite */
+}
+
+.course-actions button {
+    margin-left: 5px;
+    /* Espace entre les boutons */
+}
+
+.course-actions button:first-child {
+    margin-left: 0;
+}
+
+
+/* Style pour la nouvelle section des cours terminés */
+.finished-courses {
+    /* Styles similaires à .course-section si vous voulez la même apparence */
+    background-color: #e9e9e9;
+    /* Légèrement différent pour la distinguer ? */
+}
+
+.status-badge {
+    background-color: #4CAF50;
+    /* Vert */
+    color: white;
+    padding: 5px 10px;
+    border-radius: 12px;
+    /* Pour un look de "pilule" */
+    font-size: 0.8em;
+    float: right;
+}
