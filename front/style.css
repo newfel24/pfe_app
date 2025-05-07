@@ -258,14 +258,6 @@ footer {
     margin-left: 0;
 }
 
-
-/* Style pour la nouvelle section des cours terminés */
-.finished-courses {
-    /* Styles similaires à .course-section si vous voulez la même apparence */
-    background-color: #e9e9e9;
-    /* Légèrement différent pour la distinguer ? */
-}
-
 .status-badge {
     background-color: #4CAF50;
     /* Vert */
