@@ -148,3 +148,52 @@ footer {
     min-height: 1em;
     /* Prevent layout shift */
 }
+
+/* Dans style.css */
+.signup-container {
+    /* Ou réutilisez .login-container */
+    max-width: 450px;
+    /* Un peu plus large pour le champ nom */
+    margin: 50px auto;
+    padding: 2rem;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.signup-container h1 {
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+.message-area {
+    margin-top: 1rem;
+    text-align: center;
+    min-height: 1em;
+    /* Prevent layout shift */
+    padding: 0.5em;
+    border-radius: 4px;
+}
+
+.error-message {
+    /* S'assure que error-message est bien défini */
+    color: red;
+    background-color: #ffe0e0;
+    /* Optionnel : fond léger pour l'erreur */
+    border: 1px solid red;
+    /* Optionnel : bordure pour l'erreur */
+}
+
+.success-message {
+    color: green;
+    background-color: #e0ffe0;
+    /* Optionnel : fond léger pour le succès */
+    border: 1px solid green;
+    /* Optionnel : bordure pour le succès */
+}
+
+.signup-link,
+.login-link {
+    text-align: center;
+    margin-top: 1.5rem;
+}

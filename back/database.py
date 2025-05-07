@@ -5,6 +5,8 @@ import logging  # For logging DB errors
 import mysql.connector
 from config import config
 from mysql.connector import Error
+from werkzeug.security import generate_password_hash
+
 
 logging.basicConfig(level=logging.INFO)
 
@@ -28,6 +30,51 @@ def get_db_connection():
 
 
 # --- User Queries ---
+def create_user(name, email, password_text):
+    """Creates a new user in the database with a hashed password."""
+    conn = get_db_connection()
+    if not conn:
+        logging.error("Database connection failed, cannot create user.")
+        return False, "Database connection error."
+
+    try:
+        cursor = conn.cursor(
+            dictionary=True
+        )  # Assurez-vous que dictionary=True est utilisé si vous voulez
+        # vérifier les doublons d'une certaine manière
+
+        # 1. Vérifier si l'email existe déjà
+        check_query = "SELECT user_id FROM users WHERE email = %s"
+        cursor.execute(check_query, (email,))
+        if cursor.fetchone():
+            logging.warning(
+                "Attempt to create user with existing email: %s", email
+            )
+            return False, "Email already exists."
+
+        # 2. Hasher le mot de passe
+        password_hash = generate_password_hash(
+            password_text, method="pbkdf2:sha256"
+        )
+
+        # 3. Insérer le nouvel utilisateur
+        insert_query = (
+            "INSERT INTO users (name, email, password_hash) VALUES (%s, %s, %s)"
+        )
+        cursor.execute(insert_query, (name, email, password_hash))
+        conn.commit()
+        logging.info("User created successfully: %s", email)
+        return True, "User created successfully."
+    except Error as e:
+        logging.error("Error creating user %s: %s", email, e)
+        conn.rollback()
+        return False, f"Database error: {e}"  # Ou un message plus générique
+    finally:
+        if conn.is_connected():
+            cursor.close()
+            conn.close()
+
+
 def find_user_by_email(email):
     """Find a user by email and return user data.
 

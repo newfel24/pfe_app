@@ -18,7 +18,7 @@ from flask_login import (
 )
 from models import User
 from werkzeug.security import (
-    check_password_hash,  # For password handling
+    check_password_hash,
     generate_password_hash,
 )
 from flask_cors import CORS
@@ -28,6 +28,46 @@ from flask_cors import CORS
 app = Flask(__name__)
 app.config["SECRET_KEY"] = config.SECRET_KEY
 CORS(app)  # Uncomment if frontend served from different origin
+
+
+# --- Signup Setup ---
+@app.route("/api/signup", methods=["POST"])
+def signup():
+    """Handles new user registration."""
+    data = request.get_json()
+    if (
+        not data
+        or not data.get("name")
+        or not data.get("email")
+        or not data.get("password")
+    ):
+        return jsonify(message="Missing name, email, or password."), 400
+
+    name = data["name"].strip()
+    email = data["email"].strip()
+    password = data["password"]
+
+    if not name or not email or not password:  # Vérification après strip
+        return jsonify(
+            message="Name, email, and password cannot be empty."
+        ), 400
+
+    if len(password) < 6:  # Validation basique côté serveur aussi
+        return jsonify(
+            message="Password must be at least 6 characters long."
+        ), 400
+
+    # La vérification de l'existence de l'email et le hachage
+    success, message = database.create_user(name, email, password)
+
+    if success:
+        return jsonify(message=message), 201  # 201 Created
+    else:
+        if message == "Email already exists.":
+            return jsonify(message=message), 409  # 409 Conflict
+        else:
+            return jsonify(message=message), 500  # Erreur interne du serveur
+
 
 # --- Flask-Login Setup ---
 login_manager = LoginManager()
