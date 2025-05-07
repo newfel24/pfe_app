@@ -235,6 +235,76 @@ def enroll_user_in_course(user_id, course_id):
             conn.close()
 
 
+def disenroll_user_from_course(user_id, course_id):
+    """Removes an enrollment record from the database."""
+    conn = get_db_connection()
+    if not conn:
+        logging.error("Database connection failed, cannot disenroll user.")
+        return False, "Database connection error."
+
+    cursor = None  # Initialiser cursor à None
+    try:
+        cursor = conn.cursor()
+        # Vérifier d'abord si l'inscription existe pour donner un retour plus précis
+        check_query = (
+            "SELECT 1 FROM enrollments WHERE user_id = %s AND course_id = %s"
+        )
+        cursor.execute(check_query, (user_id, course_id))
+        if not cursor.fetchone():
+            logging.warning(
+                "User %s not enrolled in course %s, disenrollment requested.",
+                user_id,
+                course_id,
+            )
+            # On pourrait considérer cela comme un succès car l'état final est "non inscrit"
+            # ou retourner un message spécifique. Pour l'instant, on supprime si ça existe.
+            return True, "User was not enrolled or already disenrolled."
+
+        delete_query = (
+            "DELETE FROM enrollments WHERE user_id = %s AND course_id = %s"
+        )
+        cursor.execute(delete_query, (user_id, course_id))
+
+        if (
+            cursor.rowcount > 0
+        ):  # rowcount indique le nombre de lignes affectées
+            conn.commit()  # Valider la transaction
+            logging.info(
+                "User %s disenrolled successfully from course %s",
+                user_id,
+                course_id,
+            )
+            return True, "Successfully disenrolled."
+        else:
+            # Cela ne devrait pas arriver si la vérification ci-dessus a trouvé une inscription
+            # mais c'est une sécurité en cas de conditions de concurrence rares sans verrouillage de ligne.
+            logging.warning(
+                "No enrollment found for user %s and course %s "
+                "during delete, though expected.",
+                user_id,
+                course_id,
+            )
+            return (
+                True,
+                "No active enrollment found to remove.",
+            )  # Ou False si on veut signaler l'incohérence
+    except Error as e:
+        logging.error(
+            "Error disenrolling user %s from course %s: %s",
+            user_id,
+            course_id,
+            e,
+        )
+        if conn:  # S'assurer que conn existe avant de faire rollback
+            conn.rollback()  # Annuler en cas d'erreur
+        return False, f"Database error: {e}"
+    finally:
+        if cursor:
+            cursor.close()
+        if conn and conn.is_connected():
+            conn.close()
+
+
 def get_course_details(course_id):
     """Fetch details for a single course by ID."""
     conn = get_db_connection()

@@ -197,3 +197,22 @@ footer {
     text-align: center;
     margin-top: 1.5rem;
 }
+
+.disenroll-button {
+    background-color: #d9534f;
+    /* Rouge pour la désinscription */
+    color: white;
+    padding: 8px 12px;
+    /* Un peu plus petit si vous voulez */
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    text-align: center;
+    margin-top: 0.5rem;
+    float: right;
+    /* Positionner à droite comme le bouton enroll */
+}
+
+.disenroll-button:hover {
+    background-color: #c9302c;
+}

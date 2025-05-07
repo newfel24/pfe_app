@@ -236,6 +236,35 @@ def enroll_course():
         )  # Internal server error
 
 
+@app.route("/api/disenroll", methods=["POST"])
+@login_required  # Protéger cette route
+def disenroll_course():
+    """Disenrolls the current user from a selected course."""
+    data = request.get_json()
+    if not data or "courseId" not in data:
+        return jsonify(message="Missing courseId."), 400
+
+    try:
+        course_id = int(data["courseId"])
+    except ValueError:
+        return jsonify(message="Invalid courseId format."), 400
+
+    user_id = current_user.id
+
+    success, message = database.disenroll_user_from_course(user_id, course_id)
+
+    if success:
+        # Le message de database.py est déjà assez bon.
+        return jsonify(message=message), 200
+    else:
+        # Le message d'erreur vient aussi de database.py
+        # S'il s'agit d'une erreur de base de données, un code 500 est approprié.
+        # Si c'est une autre logique (par exemple, "non trouvé" qui serait un échec), on pourrait ajuster.
+        return jsonify(
+            message=message
+        ), 500  # Ou un autre code d'erreur si pertinent
+
+
 # --- Helper for password hashing (run manually once to add users) ---
 # You'd typically have a separate script or admin interface for user creation
 @app.route("/create_hash/<password>")
